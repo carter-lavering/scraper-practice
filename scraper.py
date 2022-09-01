@@ -1,11 +1,13 @@
 "Create a CSV file of all the jobs and their info from Washington Career Bridge"
 
+import csv
 from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from tabulate import tabulate
 from tqdm import tqdm
+
+RESULTS_LIMIT = 0  # only get first n jobs (set to 0 for no limiting)
 
 
 def get_attribute(target_soup, label):
@@ -22,7 +24,7 @@ DATA_RESULTS = [
     "OpeningsPerYear",
     "MedianWages",
     "AverageWages",
-    # "RequiredEducationLevel",
+    "RequiredEducationLevel",
 ]
 
 for cid in tqdm(range(1, 17), desc="getting all careers"):  # 16 different cluster IDs
@@ -39,7 +41,8 @@ for cid in tqdm(range(1, 17), desc="getting all careers"):  # 16 different clust
 
         final_results.append({"SOC": soc})
 
-final_results = final_results[:10]  # TODO: remove for full results
+if RESULTS_LIMIT:
+    final_results = final_results[:RESULTS_LIMIT]
 
 for r in tqdm(final_results, desc="downloading career data"):
 
@@ -59,7 +62,11 @@ for r in tqdm(final_results, desc="downloading career data"):
             r[d] = "None"
 
 
-header = final_results[0].keys()  # exclude education level
-rows = [d.values() for d in final_results]
-print()
-print(tabulate(rows, header))
+# header = final_results[0].keys()  # exclude education level
+fieldnames = ["SOC"] + DATA_RESULTS  # SOC is retrieved in a different way
+
+with open("job_stats.csv", mode="w", encoding="UTF-8") as csv_file:
+    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    writer.writeheader()
+    for d in tqdm(final_results, desc="writing to file"):
+        writer.writerow(d)
